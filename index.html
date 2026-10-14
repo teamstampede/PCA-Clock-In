@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prizemen Christian Academy | Staff Clock-In</title>
+<style>
+  :root{
+    --burgundy:#6E1423; --burgundy-dark:#4A0D18;
+    --gold:#C9A24B; --gold-light:#E4C77E;
+    --black:#111111;
+    --success:#2E7D32; --warn:#B7791F; --error:#B3261E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI', Arial, sans-serif;
+    background:linear-gradient(160deg, var(--black) 0%, var(--burgundy-dark) 100%);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:20px; color:#fff;
+  }
+  .card{
+    width:100%; max-width:440px; background:#1A1A1A; border:2px solid var(--gold);
+    border-radius:16px; padding:28px 24px 32px; box-shadow:0 12px 40px rgba(0,0,0,0.5);
+  }
+  .brand{text-align:center; margin-bottom:6px;}
+  .brand h1{font-size:22px; letter-spacing:1px; margin:0; color:var(--gold-light); text-transform:uppercase;}
+  .brand p{margin:4px 0 0; font-size:12px; letter-spacing:2px; color:#B9A98A; text-transform:uppercase;}
+  .divider{height:2px; background:linear-gradient(90deg, transparent, var(--gold), transparent); margin:18px 0 22px;}
+  label{display:block; font-size:13px; color:var(--gold-light); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;}
+  select, input[type=password]{
+    width:100%; padding:14px; border-radius:8px; border:1px solid #444;
+    background:#0F0F0F; color:#fff; font-size:16px; margin-bottom:18px;
+  }
+  .position-display{font-size:13px; color:#B9A98A; margin:-12px 0 18px; min-height:16px;}
+  .seg{display:flex; gap:10px; margin-bottom:18px;}
+  .seg button{
+    flex:1; padding:14px 8px; border-radius:10px; border:2px solid #444; background:#0F0F0F;
+    color:#ccc; font-size:15px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer;
+  }
+  .seg button.active{border-color:var(--gold); background:rgba(201,162,75,0.18); color:var(--gold-light);}
+  .seg button:disabled{opacity:0.35; cursor:not-allowed;}
+  .btn-row{display:flex; gap:12px; margin-bottom:12px;}
+  .action{
+    flex:1; padding:16px 10px; border-radius:10px; border:none; font-size:16px; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:transform .1s ease, opacity .2s ease;
+  }
+  .action:active{transform:scale(0.97);}
+  .action:disabled{opacity:0.5; cursor:not-allowed;}
+  #clockIn{background:var(--gold); color:var(--black);}
+  #clockOut{background:transparent; color:var(--gold-light); border:2px solid var(--gold);}
+  .lunch{background:#2A2A2A; color:#ddd; border:1px solid #555; font-size:14px;}
+  .wide{width:100%; background:var(--burgundy); color:#fff; border:1px solid var(--gold); font-size:14px; padding:14px 10px; margin-bottom:4px;}
+  .hidden{display:none !important;}
+  #status{margin-top:16px; padding:14px; border-radius:8px; font-size:14px; line-height:1.5; display:none;}
+  #status.success{display:block; background:rgba(46,125,50,0.15); border:1px solid var(--success); color:#8FD19E;}
+  #status.warn{display:block; background:rgba(183,121,31,0.15); border:1px solid var(--warn); color:#E9C27C;}
+  #status.error{display:block; background:rgba(179,38,30,0.15); border:1px solid var(--error); color:#F0918B;}
+  #status.loading{display:block; background:rgba(255,255,255,0.05); border:1px solid #555; color:#ccc;}
+  .footer-note{text-align:center; margin-top:22px; font-size:11px; color:#7A7A7A; letter-spacing:0.5px;}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <h1>Prizemen Christian Academy</h1>
+    <p>Staff Time Clock</p>
+  </div>
+  <div class="divider"></div>
+
+  <label for="staffSelect">Select Your Name</label>
+  <select id="staffSelect" disabled>
+    <option value="">Loading staff…</option>
+  </select>
+  <div class="position-display" id="positionDisplay"></div>
+
+  <div id="pinWrap" class="hidden">
+    <label for="pin">Your PIN</label>
+    <input type="password" id="pin" inputmode="numeric" autocomplete="off" maxlength="8">
+  </div>
+
+  <label>Program</label>
+  <div class="seg" id="programSeg">
+    <button type="button" data-program="School">School</button>
+    <button type="button" data-program="Aftercare">Aftercare</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="action" id="clockIn">Clock In</button>
+    <button class="action" id="clockOut">Clock Out</button>
+  </div>
+  <div class="btn-row hidden" id="lunchRow">
+    <button class="action lunch" id="lunchStart">Start Lunch</button>
+    <button class="action lunch" id="lunchEnd">End Lunch</button>
+  </div>
+  <button class="action wide hidden" id="switchBtn">Switch: Out of School → In to Aftercare</button>
+
+  <div id="status"></div>
+
+  <div class="footer-note">Location access is required to record your time.<br>Enter to Learn • Leave to Lead</div>
+</div>
+
+<script>
+const CONFIG = {
+  // Web App URL from Deploy > Manage deployments (stays the same when you publish a new version)
+  WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyZlVqmwG5rNYr4EIaoypzR3eHj2t2-ra4D4JsyJfXxetDF8kd2xPdp-MT8f5pnW00Z/exec"
+};
+
+const staffSelect = document.getElementById('staffSelect');
+const positionDisplay = document.getElementById('positionDisplay');
+const pinWrap = document.getElementById('pinWrap');
+const pinInput = document.getElementById('pin');
+const statusEl = document.getElementById('status');
+const lunchRow = document.getElementById('lunchRow');
+const switchBtn = document.getElementById('switchBtn');
+const segButtons = Array.from(document.querySelectorAll('#programSeg button'));
+const actionButtons = Array.from(document.querySelectorAll('.action'));
+
+let staffList = [];
+let program = null;
+let resetTimer = null;
+
+function showStatus(message, type) { statusEl.className = type; statusEl.textContent = message; }
+function clearStatus() { statusEl.className = ''; statusEl.textContent = ''; }
+function setBusy(b) { actionButtons.forEach(x => x.disabled = b); }
+function currentStaff() { return staffList.find(s => s.name === staffSelect.value) || null; }
+
+async function loadStaff() {
+  staffSelect.disabled = true;
+  staffSelect.innerHTML = '<option value="">Loading staff…</option>';
+  try {
+    const res = await fetch(CONFIG.WEB_APP_URL + '?action=staff&t=' + Date.now());
+    const data = await res.json();
+    if (data.result !== 'success') throw new Error(data.message || 'bad response');
+    staffList = data.staff;
+    staffSelect.innerHTML = '<option value="">-- Choose your name --</option>';
+    staffList.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.name; o.textContent = s.name;
+      staffSelect.appendChild(o);
+    });
+    staffSelect.disabled = false;
+  } catch (e) {
+    staffSelect.innerHTML = '<option value="">Could not load staff</option>';
+    showStatus('Could not load the staff list. Check your connection and refresh. (Office: confirm the latest Code.gs is deployed as a NEW VERSION.)', 'error');
+  }
+}
+
+function refreshForStaff() {
+  const s = currentStaff();
+  positionDisplay.textContent = s ? s.position : '';
+  pinWrap.classList.toggle('hidden', !(s && s.pin));
+  pinInput.value = '';
+  program = null;
+  segButtons.forEach(b => {
+    const p = b.dataset.program;
+    const allowed = s && ((p === 'School' && s.school) || (p === 'Aftercare' && s.aftercare));
+    b.disabled = !allowed;
+    b.classList.remove('active');
+  });
+  if (s) {
+    const allowed = segButtons.filter(b => !b.disabled);
+    if (allowed.length === 1) { program = allowed[0].dataset.program; allowed[0].classList.add('active'); }
+  }
+  refreshButtons();
+  clearStatus();
+}
+
+function refreshButtons() {
+  const s = currentStaff();
+  lunchRow.classList.toggle('hidden', program !== 'School');
+  switchBtn.classList.toggle('hidden', !(s && s.school && s.aftercare));
+}
+
+segButtons.forEach(b => b.addEventListener('click', () => {
+  if (b.disabled) return;
+  program = b.dataset.program;
+  segButtons.forEach(x => x.classList.toggle('active', x === b));
+  refreshButtons();
+  clearStatus();
+}));
+
+staffSelect.addEventListener('change', refreshForStaff);
+
+function getPosition(timeoutMs) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('no geolocation')); return; }
+    navigator.geolocation.getCurrentPosition(resolve, reject,
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 });
+  });
+}
+
+function resetForm() {
+  staffSelect.value = '';
+  refreshForStaff();
+  clearStatus();
+}
+
+async function submit(action) {
+  const s = currentStaff();
+  if (!s) { showStatus('Please select your name first.', 'error'); return; }
+  if (action !== 'switch_to_aftercare' && !program) { showStatus('Please choose School or Aftercare first.', 'error'); return; }
+  if (s.pin && !pinInput.value.trim()) { showStatus('Please enter your PIN.', 'error'); return; }
+
+  if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
+  setBusy(true);
+  showStatus('Getting your location…', 'loading');
+
+  let pos = null;
+  try {
+    pos = await getPosition(s.exempt ? 6000 : 15000);
+  } catch (e) {
+    if (!s.exempt) {
+      setBusy(false);
+      showStatus('Location access was denied or is unavailable. Please turn on location for this browser and try again.', 'error');
+      return;
+    }
+  }
+
+  showStatus('Recording your time…', 'loading');
+  const payload = {
+    name: s.name,
+    pin: pinInput.value.trim(),
+    program: action === 'switch_to_aftercare' ? 'School' : program,
+    action: action,
+    lat: pos ? pos.coords.latitude : null,
+    lng: pos ? pos.coords.longitude : null,
+    accuracy: pos ? pos.coords.accuracy : null,
+    deviceTime: new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch(CONFIG.WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight with Apps Script
+      body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    setBusy(false);
+    if (out.result === 'success') {
+      if (out.warning) showStatus('⚠️ ' + out.message + ' — ' + out.warning, 'warn');
+      else showStatus('✅ ' + out.message, 'success');
+      pinInput.value = '';
+      resetTimer = setTimeout(resetForm, 9000); // clear the screen for the next person
+    } else {
+      showStatus('❌ ' + out.message, 'error');
+    }
+  } catch (e) {
+    setBusy(false);
+    showStatus('Could not confirm your punch. Wait a moment, then check with the office before trying again. Accidental double-taps are ignored automatically.', 'error');
+  }
+}
+
+document.getElementById('clockIn').addEventListener('click', () => submit('in'));
+document.getElementById('clockOut').addEventListener('click', () => submit('out'));
+document.getElementById('lunchStart').addEventListener('click', () => submit('lunch_start'));
+document.getElementById('lunchEnd').addEventListener('click', () => submit('lunch_end'));
+switchBtn.addEventListener('click', () => submit('switch_to_aftercare'));
+
+loadStaff();
+</script>
+</body>
+</html>
